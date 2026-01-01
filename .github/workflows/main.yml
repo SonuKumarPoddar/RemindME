@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repo
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
@@ -33,22 +33,22 @@ jobs:
         pip install --upgrade pip
         pip install buildozer cython==0.29.36
 
-    - name: Install Android SDK command-line tools
+    - name: Download Android cmdline-tools (FIXED)
       run: |
         mkdir -p $HOME/android-sdk/cmdline-tools
-        cd $HOME/android-sdk
+        cd $HOME/android-sdk/cmdline-tools
         wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
         unzip commandlinetools-linux-11076708_latest.zip
-        mv cmdline-tools cmdline-tools/latest
+        mv cmdline-tools latest
 
-    - name: Set Android environment
+    - name: Set Android env
       run: |
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
         echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
 
-    - name: Accept Android SDK licenses
+    - name: Accept Android licenses
       run: yes | sdkmanager --licenses
 
     - name: Install Android SDK packages
@@ -59,7 +59,7 @@ jobs:
           "build-tools;30.0.3" \
           "ndk;25.2.9519653"
 
-    - name: Clean previous builds
+    - name: Clean old build
       run: rm -rf .buildozer bin
 
     - name: Build APK
