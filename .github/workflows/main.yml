@@ -1,89 +1,74 @@
 name: Build Android APK (Kivy)
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
+    env:
+      ANDROID_SDK_ROOT: /home/runner/android-sdk
+      ANDROID_HOME: /home/runner/android-sdk
+
     steps:
-    # 1️⃣ Checkout repo
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2️⃣ Setup Java 17 (MOST IMPORTANT)
-    - name: Set up Java 17
+    # ---------- JAVA (FIXED) ----------
+    - name: Set up Java 11
       uses: actions/setup-java@v4
       with:
         distribution: temurin
-        java-version: 17
+        java-version: 11
 
-    # 3️⃣ Setup Python
-    - name: Set up Python
+    # ---------- PYTHON ----------
+    - name: Set up Python 3.10
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: "3.10"
 
-    # 4️⃣ Install system dependencies
-    - name: Install system packages
+    - name: Install Python dependencies
       run: |
-        sudo apt update
-        sudo apt install -y \
-          zip unzip git \
-          build-essential \
-          libncurses5 \
-          libstdc++6 \
-          libffi-dev \
-          libssl-dev \
-          zlib1g-dev
-
-    # 5️⃣ Install Buildozer & p4a
-    - name: Install Buildozer
-      run: |
-        pip install --upgrade pip
+        python -m pip install --upgrade pip
         pip install buildozer cython==0.29.36
 
-    # 6️⃣ Setup Android SDK
-    - name: Install Android SDK
-      env:
-        ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+    # ---------- ANDROID SDK ----------
+    - name: Install Android SDK command line tools
       run: |
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
         cd $ANDROID_SDK_ROOT/cmdline-tools
-
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        unzip commandlinetools-linux-11076708_latest.zip
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip commandlinetools-linux-9477386_latest.zip
         mv cmdline-tools latest
 
-        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
-
-    # 7️⃣ Accept licenses & install packages
-    - name: Install Android packages
+    - name: Install Android SDK packages (STABLE)
       run: |
-        yes | sdkmanager --licenses
-        sdkmanager \
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
           "platform-tools" \
-          "platforms;android-31" \
-          "build-tools;31.0.0" \
-          "ndk;25.2.9519653"
+          "platforms;android-33" \
+          "build-tools;33.0.2"
 
-    # 8️⃣ Clean previous builds
-    - name: Clean buildozer
+    # ---------- VERIFY AIDL ----------
+    - name: Verify AIDL
       run: |
-        rm -rf .buildozer
+        ls $ANDROID_SDK_ROOT/build-tools/33.0.2/aidl
 
-    # 9️⃣ Build APK
+    # ---------- BUILD ----------
+    - name: Clean previous builds
+      run: |
+        buildozer android clean || true
+
     - name: Build APK
       run: |
-        buildozer android debug
+        buildozer -v android debug
 
-    # 🔟 Upload APK
+    # ---------- UPLOAD ----------
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: RemindME-APK
+        name: apk
         path: bin/*.apk
